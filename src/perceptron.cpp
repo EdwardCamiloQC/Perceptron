@@ -1,10 +1,10 @@
-#include "perceptron.h"
+#include <perceptron.h>
 
-Perceptron2::Perceptron2(uint8_t numInputs, uint8_t numOutputs, uint8_t numLayers, ...):learningReason(0.1), numberInputs(numInputs), numberOutputs(numOutputs), numberLayers(numLayers){
+Perceptron::Perceptron(double reason, uint8_t numInputs, uint8_t numOutputs, uint8_t numLayers, ...):learningReason(reason), numberInputs(numInputs), numberOutputs(numOutputs), numberLayers(numLayers){
     va_list layerList;
     va_start(layerList, numLayers);
     int argu;
-    neuronsForLayer = new int[numberLayers];
+    neuronsForLayer = new uint8_t[numberLayers];
     uint8_t index = 0;
     while((argu = va_arg(layerList, int)) != 0){
         if(index == numberLayers - 1){
@@ -42,7 +42,7 @@ Perceptron2::Perceptron2(uint8_t numInputs, uint8_t numOutputs, uint8_t numLayer
     }
 }
 
-void Perceptron2::weightCalibrationDefault(void){
+void Perceptron::weightCalibrationDefault(void){
     for(uint8_t nLayer = 0; nLayer < numberLayers; nLayer++){
         for(uint8_t nNueron = 0; nNueron < neuronsForLayer[nLayer]; nNueron++){
             if(nLayer == 0){
@@ -58,21 +58,48 @@ void Perceptron2::weightCalibrationDefault(void){
     }
 }
 
-void Perceptron2::settingWeight(const char* route){
-    ofstream weightFile("pesos");
-    if(!weightFile){
-        cout << "No se pudo crear el flujo con el archivo...\n";
+void Perceptron::setWeightCalibrationBase(double baseWeight = 0.5){
+    for(uint8_t nLayer = 0; nLayer < numberLayers; nLayer++){
+        for(uint8_t nNueron = 0; nNueron < neuronsForLayer[nLayer]; nNueron++){
+            if(nLayer == 0){
+                for(uint8_t nWeight = 0; nWeight <= numberInputs; nWeight++){
+                    layer[nLayer][nNueron][nWeight] = baseWeight;
+                }
+            }else{
+                for(uint8_t nWeight = 0; nWeight < neuronsForLayer[nLayer - 1] + 1; nWeight++){
+                    layer[nLayer][nNueron][nWeight] = baseWeight;
+                }
+            }
+        }
     }
-    unsigned int quantityWeights = (numberInputs + 1) * neuronsForLayer[0];
-    for(uint32_t i = 1; i < numberLayers; i++){
-        quantityWeights += (neuronsForLayer[i - 1] + 1) * neuronsForLayer[i];
-    }
-    char weightData[quantityWeights];
-    weightFile << quantityWeights;
-    weightFile.close();
 }
 
-double** Perceptron2::runNeuralNetwork(const double* valuesIn){
+void Perceptron::settingWeights(const char* route){
+    double obtainVal;
+    ifstream weightFile(route, ios::in | ios::binary);
+    if(weightFile.fail()){
+        cout << "No se pudo crear el flujo con el archivo...\n";
+    }else{
+        for(uint8_t nLayer = 0; nLayer < numberLayers; nLayer++){
+            for(uint8_t nNueron = 0; nNueron < neuronsForLayer[nLayer]; nNueron++){
+                if(nLayer == 0){
+                    for(uint8_t nWeight = 0; nWeight <= numberInputs; nWeight++){
+                        weightFile.read(reinterpret_cast<char*>(&obtainVal), sizeof(double));
+                        layer[nLayer][nNueron][nWeight] = obtainVal;
+                    }
+                }else{
+                    for(uint8_t nWeight = 0; nWeight < neuronsForLayer[nLayer - 1] + 1; nWeight++){
+                        weightFile.read(reinterpret_cast<char*>(&obtainVal), sizeof(double));
+                        layer[nLayer][nNueron][nWeight] = obtainVal;
+                    }
+                }
+            }
+        }
+        weightFile.close();
+    }
+}
+
+double** Perceptron::runNeuralNetwork(const double* valuesIn){
     double x = 0.0;
     for(uint8_t nConnector = 0; nConnector < numberInputs; nConnector++){
         valuesNeuron[0][nConnector] = valuesIn[nConnector];
@@ -97,38 +124,36 @@ double** Perceptron2::runNeuralNetwork(const double* valuesIn){
     return valuesNeuron;
 }
 
-void Perceptron2::backPropagation(const double* valuesPrub, const double* valuesDesired){
+void Perceptron::backPropagation(const double* valuesPrub, const double* valuesDesired){
     runNeuralNetwork(valuesPrub);
-    double aux = 0.0, inputValue, valAuxi = 0.0, derivate;
-    unsigned int mayorLayer = 0;
-    for(int k = 0; k < numberLayers; k++){
+    double inputValue = 0.0, valAuxi = 0.0, derivate = 0.0;
+    uint8_t mayorLayer = 0;
+    for(uint8_t k = 0; k < numberLayers; k++){
         if(neuronsForLayer[k] > mayorLayer){
             mayorLayer = neuronsForLayer[k];
         }
     }
-    cout << hex << mayorLayer << endl;
     double sigmaAux[mayorLayer];
     double auxDerivatePri[mayorLayer];
-    for(int k = 0; k < mayorLayer; k++){
+    for(uint8_t k = 0; k < mayorLayer; k++){
         sigmaAux[k] = 1.0;
         auxDerivatePri[k] = 1.0;
     }
-    int posibilities = 1;
-    int tope;
-    for(int nLayer = numberLayers - 1; nLayer >= 0; nLayer--){
+    uint8_t posibilities = 1;
+    uint8_t tope = 0;
+    for(int8_t nLayer = numberLayers - 1; nLayer >= 0; nLayer--){
         if(nLayer == 0){
             tope = numberInputs;
         }else{
             tope = neuronsForLayer[nLayer - 1];
         }
-        cout << tope << endl;
-        for(int nNeuron = 0; nNeuron < neuronsForLayer[nLayer]; nNeuron++){
+        for(uint8_t nNeuron = 0; nNeuron < neuronsForLayer[nLayer]; nNeuron++){
             derivate = valuesNeuron[nLayer + 1][nNeuron] * (1 - valuesNeuron[nLayer + 1][nNeuron]);
             if(nLayer == numberLayers - 1){
                 sigmaAux[nNeuron] = valuesNeuron[nLayer + 1][nNeuron] - valuesDesired[nNeuron];
             }
-            for(int nWeight = 0; nWeight <= tope; nWeight++){
-                for(int nOut = 0; nOut < posibilities; nOut++){
+            for(uint8_t nWeight = 0; nWeight <= tope; nWeight++){
+                for(uint8_t nOut = 0; nOut < posibilities; nOut++){
                     if(nLayer == numberLayers - 1){
                         valAuxi = sigmaAux[nNeuron];
                     }else{
@@ -144,7 +169,7 @@ void Perceptron2::backPropagation(const double* valuesPrub, const double* values
                 if(nWeight == tope){
                     auxDerivatePri[nNeuron] = weightsChange[nLayer][nNeuron][nWeight];
                     if(nNeuron == neuronsForLayer[nLayer] - 1){
-                        for(int b = 0; b < neuronsForLayer[nLayer]; b++){
+                        for(uint8_t b = 0; b < neuronsForLayer[nLayer]; b++){
                             sigmaAux[b] = auxDerivatePri[b];
                         }
                     }
@@ -154,53 +179,64 @@ void Perceptron2::backPropagation(const double* valuesPrub, const double* values
         }
         posibilities = neuronsForLayer[nLayer];
     }
-    for(int nLayer = 0; nLayer < numberLayers; nLayer++){
-        if(nLayer == 0){
-            tope = numberInputs;
-        }else{
-            tope = neuronsForLayer[nLayer - 1];
-        }
-        for(int nNeuron = 0; nNeuron < neuronsForLayer[nLayer]; nNeuron++){
-            for(int nWeight = 0; nWeight <= tope; nWeight++){
-                layer[nLayer][nNeuron][nWeight] -= weightsChange[nLayer][nNeuron][nWeight] * learningReason;
-            }
-        }
-    }
-}
-
-void Perceptron2::saveWeights(const char* path){
-    uint8_t tope;
-    ofstream flujoPesos;
-    flujoPesos.open("pesosRed", ios::trunc);
-    if(!flujoPesos){
-        cout << "No se pudo crear el flujo" << endl;
-    }
-    flujoPesos << "{" << endl;
     for(uint8_t nLayer = 0; nLayer < numberLayers; nLayer++){
-        flujoPesos << "capa" << nLayer + 1 << ": ";
         if(nLayer == 0){
             tope = numberInputs;
         }else{
             tope = neuronsForLayer[nLayer - 1];
         }
         for(uint8_t nNeuron = 0; nNeuron < neuronsForLayer[nLayer]; nNeuron++){
-            flujoPesos << "[";
             for(uint8_t nWeight = 0; nWeight <= tope; nWeight++){
-                flujoPesos << layer[nLayer][nNeuron][nWeight] << ",";
+                layer[nLayer][nNeuron][nWeight] -= weightsChange[nLayer][nNeuron][nWeight] * learningReason;
             }
-            flujoPesos << "]" << endl;
         }
-        flujoPesos << endl;
     }
-    flujoPesos << "}" ;
-    flujoPesos.close();
 }
 
-void Perceptron2::setReasonLearning(double reason){
+void Perceptron::saveWeights(const char* path){
+    uint8_t tope;
+    ofstream flujoPesos;
+    flujoPesos.open(path, ios::out | ios::binary);
+    if(flujoPesos.fail()){
+        cout << "No se pudo crear el flujo" << endl;
+    }else{
+        for(uint8_t nLayer = 0; nLayer < numberLayers; nLayer++){
+            if(nLayer == 0){
+                tope = numberInputs;
+            }else{
+                tope = neuronsForLayer[nLayer - 1];
+            }
+            for(uint8_t nNeuron = 0; nNeuron < neuronsForLayer[nLayer]; nNeuron++){
+                for(uint8_t nWeight = 0; nWeight <= tope; nWeight++){
+                    flujoPesos.write(reinterpret_cast<char *>(&layer[nLayer][nNeuron][nWeight]), sizeof(double));
+                }
+            }
+        }
+        flujoPesos.close();
+    }
+}
+
+void Perceptron::setReasonLearning(double reason){
     learningReason = reason;
 }
 
-Perceptron2::~Perceptron2(){
+void Perceptron::showWeights(){
+    for(uint8_t nLayer = 0; nLayer < numberLayers; nLayer++){
+        for(uint8_t nNeuron = 0; nNeuron < neuronsForLayer[nLayer]; nNeuron++){
+            if(nLayer == 0){
+                for(uint8_t nWeight = 0; nWeight <= numberInputs; nWeight++){
+                    cout << layer[nLayer][nNeuron][nWeight] << endl;
+                }
+            }else{
+                for(uint8_t nWeight = 0; nWeight < neuronsForLayer[nLayer - 1] + 1; nWeight++){
+                    cout << layer[nLayer][nNeuron][nWeight] << endl;
+                }
+            }
+        }
+    }
+}
+
+Perceptron::~Perceptron(){
     for(uint8_t nLayer = 0; nLayer < numberLayers; nLayer++){
         for(uint8_t nNeuron = 0; nNeuron < neuronsForLayer[nLayer]; nNeuron++){
             delete [] layer[nLayer][nNeuron];
@@ -218,5 +254,4 @@ Perceptron2::~Perceptron2(){
         delete [] valuesNeuron[nConnect];
     }
     delete [] valuesNeuron;
-    cout << "salio";
 }

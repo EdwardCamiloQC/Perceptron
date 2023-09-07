@@ -6,10 +6,10 @@
                     a   a   a   a
                     y   y   y   y
                     e   e   e   e
-                    r   r   r   r
-                    _   _   _   _
-                    1   2   3   4
-                ---------------------
+                    r   r   r   r                                   max inputs: 255
+                    _   _   _   _                                   max outputs: 255
+                    1   2   3   4                                   max layers: 255
+                ---------------------                               max neurons for layer: 255
                 |   ○       ○   ○   |→→→→   output_1
     input_1 →→→→|       ○           |
                 |   ○       ○   ○   |→→→→   output_2
@@ -35,23 +35,25 @@
 
     using namespace std;
 
-    class Perceptron2{
-    private:
-        uint8_t numberInputs, numberOutputs, numberLayers;
-        double*** layer;
-        double**valuesNeuron;
-        double*** weightsChange;
-        double learningReason;
-        int *neuronsForLayer;
-    public:
-        Perceptron2(uint8_t numInputs, uint8_t numOutputs, uint8_t numLayers, ...);
-        void weightCalibrationDefault(void);
-        void settingWeight(const char* route);
-        double** runNeuralNetwork(const double* valuesIn);
-        void backPropagation(const double* valuesPrub, const double* valuesDesired);
-        void saveWeights(const char* path);
-        void setReasonLearning(double reason);
-        ~Perceptron2();
+    class Perceptron{
+        private:
+            double learningReason;
+            uint8_t numberInputs, numberOutputs, numberLayers;
+            double*** layer;
+            double**valuesNeuron;
+            double*** weightsChange;
+            uint8_t *neuronsForLayer;
+        public:
+            Perceptron(double reason, uint8_t numInputs, uint8_t numOutputs, uint8_t numLayers, ...);
+            void weightCalibrationDefault(void);
+            void setWeightCalibrationBase(double baseWeight);
+            void settingWeights(const char* route);
+            double** runNeuralNetwork(const double* valuesIn);
+            void backPropagation(const double* valuesPrub, const double* valuesDesired);
+            void saveWeights(const char* path);
+            void setReasonLearning(double reason);
+            void showWeights(void);
+            ~Perceptron();
     };
 
 #endif
